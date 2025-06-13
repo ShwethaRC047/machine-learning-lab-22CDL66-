@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import datetime
+import os
+
+# Step 1: Simulate dataset
+np.random.seed(42)  # For reproducibility
+
+data = {
+    'temperature': np.random.uniform(20, 40, 200),
+    'humidity': np.random.uniform(30, 90, 200),
+    'soil_moisture': np.random.uniform(10, 60, 200),
+    'light_intensity': np.random.uniform(200, 1000, 200),
+    'health_status': np.random.choice(['Healthy', 'Moderate', 'Unhealthy'], 200)
+}
+
+df = pd.DataFrame(data)
+
+# Encode labels
+label_map = {'Healthy': 2, 'Moderate': 1, 'Unhealthy': 0}
+df['health_status_encoded'] = df['health_status'].map(label_map)
+
+# Step 2: Prepare features and labels
+X = df[['temperature', 'humidity', 'soil_moisture', 'light_intensity']]
+y = df['health_status_encoded']
+
+# Step 3: Train/Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 4: Train the Model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Step 5: Evaluate the Model
+y_pred = model.predict(X_test)
+acc = accuracy_score(y_test, y_pred)
+print("Model Accuracy:", round(acc * 100, 2), "%")
+
+# Step 6: Predict from new input
+def predict_plant_health(temp, humid, moisture, light):
+    input_data = np.array([[temp, humid, moisture, light]])
+    prediction = model.predict(input_data)[0]
+    status = {2: "Healthy", 1: "Moderate", 0: "Unhealthy"}
+    return status[prediction]
+
+# Step 7: Log prediction to CSV
+def log_prediction(temp, humid, moisture, light):
+    status = predict_plant_health(temp, humid, moisture, light)
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    log_entry = pd.DataFrame([[now, temp, humid, moisture, light, status]],
+                             columns=['Timestamp', 'Temperature', 'Humidity', 'Soil_Moisture', 'Light_Intensity', 'Health_Status'])
+    
+    file_exists = os.path.isfile('plant_health_log.csv')
+    log_entry.to_csv('plant_health_log.csv', mode='a', header=not file_exists, index=False)
+    
+    print(f"Logged at {now} - Status: {status}")
+
+# ✅ Example Usage
+log_prediction(30.5, 65, 35, 700)
+log_prediction(38, 40, 20, 300)
